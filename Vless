@@ -5,18 +5,18 @@ echo "Enabling required APIs..."
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com
 
 # 2. Setup the directory properly
-# This ensures we are in the right place BEFORE we start creating files
 WORKDIR="$HOME/vless-deploy"
 if [ ! -d "$WORKDIR" ]; then
     mkdir -p "$WORKDIR"
 fi
 cd "$WORKDIR" || { echo "Failed to access $WORKDIR"; exit 1; }
 
-# 3. Ask for user input (Strict Mode)
+# 3. Ask for user input (Fixed for curl | bash)
 echo "Enter your desired Cloud Run service name:"
-read MY_SERVICE_NAME
+# The < /dev/tty allows you to type even when using curl | bash
+read MY_SERVICE_NAME < /dev/tty
 
-# FIX: Check if the input is empty. If empty, stop the script.
+# Check if the input is empty
 if [ -z "$MY_SERVICE_NAME" ]; then
     echo "❌ Error: Service name cannot be empty. Please run the script again."
     exit 1
@@ -81,7 +81,7 @@ const httpServer = http.createServer((req, res) => {
                     const copyText = document.getElementById("vlessConfig");
                     copyText.select();
                     navigator.clipboard.writeText(copyText.value);
-                    alert("Config copied to clipboard!");
+                    alert("Config copied!");
                 }
             </script>
         </body>
@@ -104,6 +104,37 @@ wss.on('connection', ws => {
         let i = msg.slice(17, 18).readUInt8() + 19;
         const port = msg.slice(i, i += 2).readUInt16BE(0);
         const ATYP = msg.slice(i, i += 1).readUInt8();
+        const host = ATYP == 1 ? msg.slice(i, i += 4).join('.') : 
+                     (ATYP == 2 ? new TextDecoder().decode(msg.slice(i + 1, i += 1 + msg.slice(i, i + 1).readUInt8())) : 
+                     (ATYP == 3 ? msg.slice(i, i += 16).reduce((s, b, i, a) => (i % 2 ? s.concat(a.slice(i - 1, i + 1)) : s), []).map(b => b.readUInt16BE(0).toString(16)).join(':') : ''));
+        
+        ws.send(new Uint8Array([VERSION, 0]));
+        const duplex = createWebSocketStream(ws);
+        net.connect({ host, port }, function () {
+            this.write(msg.slice(i));
+            duplex.on('error', () => { }).pipe(this).on('error', () => { }).pipe(duplex);
+        }).on('error', () => { });
+    }).on('error', () => { });
+});
+
+httpServer.listen(PORT, () => {
+    console.log('Listening on ' + PORT);
+});
+EOF
+
+# 6. Final Deploy
+echo "🚀 Deploying $MY_SERVICE_NAME to Cloud Run..."
+gcloud run deploy "$MY_SERVICE_NAME" \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars UUID="aaaaaaa7-bbbb-7ccc-accc-eeeeeeeeeee7" \
+  --port 8080 \
+  --timeout=3600 \
+  --concurrency=1000 \
+  --cpu=1 \
+  --memory=512Mi \
+  --quiet
         const host = ATYP == 1 ? msg.slice(i, i += 4).join('.') : 
                      (ATYP == 2 ? new TextDecoder().decode(msg.slice(i + 1, i += 1 + msg.slice(i, i + 1).readUInt8())) : 
                      (ATYP == 3 ? msg.slice(i, i += 16).reduce((s, b, i, a) => (i % 2 ? s.concat(a.slice(i - 1, i + 1)) : s), []).map(b => b.readUInt16BE(0).toString(16)).join(':') : ''));
