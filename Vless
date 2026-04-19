@@ -45,7 +45,7 @@ const { WebSocket, createWebSocketStream } = require('ws');
 
 const UUID = process.env.UUID || 'aaaaaaa7-bbbb-7ccc-accc-eeeeeeeeeee7';
 const PORT = process.env.PORT || '8080';
-const VL_NAME = 'CloudRun-Vless';
+const VL_NAME = 'raen-Vless';
 
 const CUSTOM_ADDRESS = 'firebase-settings.crashlytics.com';
 const CUSTOM_SNI = 'cares.paymaya.com';
